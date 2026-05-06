@@ -1,6 +1,5 @@
 import { Outlet } from "react-router-dom";
-import Sidebar from "./sidebar";
-
+import Sidebar from "./shared/sidebar";
 export default function AppLayout() {
   return (
     <div className="flex min-h-screen">
