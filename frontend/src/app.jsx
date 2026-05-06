@@ -1,16 +1,19 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Layout from './components/layout/layouts';
-import Dashboard from './pages/dashboard';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AppLayout from "./AppLayout";
+import Dashboard from "./pages/Dashboard"; // Use your existing dashboard path
+import GuidelinesPage from "./pages/GuidelinesPage";
 
 export default function App() {
   return (
-    <Router>
-      <Layout>
-        <Routes>
+    <BrowserRouter>
+      <Routes>
+        {/* Everything inside this Route automatically gets your Sidebar and Layout */}
+        <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
-          {/* Add other routes here */}
-        </Routes>
-      </Layout>
-    </Router>
+          <Route path="/guidelines" element={<GuidelinesPage />} />
+          {/* Add your other paths here */}
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
