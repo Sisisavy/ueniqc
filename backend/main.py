@@ -11,7 +11,7 @@ app = FastAPI()
 # 2. IMPORTANT: Fixes the CORS blockage (Frontend talking to Backend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Your Vite frontend URL
+    allow_origins=["*"],  # In production, specify your frontend URL here
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

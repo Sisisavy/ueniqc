@@ -1,6 +1,5 @@
 // This is the implementation your existing code expects
-const API_URL = "http://localhost:8000";
-
+const API_URL = "https://qc-backend-rkgg.onrender.com";
 const request = async (entity, method, options = {}) => {
   const url = `${API_URL}/${entity.toLowerCase()}${options.id ? `/${options.id}` : ""}`;
   const response = await fetch(url, {
