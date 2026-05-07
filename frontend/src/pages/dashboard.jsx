@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react"; // added useRef
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FileText, AlertTriangle, CheckCircle, Clock, Zap, Loader2 } from "lucide-react";
+import { FileText, AlertTriangle, CheckCircle, Clock, Zap, Loader2, Upload } from "lucide-react"; // added Upload
+import Papa from "papaparse"; // added Papa
 
-// Local imports using relative paths to avoid configuration errors
+// Local imports
 import { base44 } from "../api/base44Client";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -15,7 +16,9 @@ import { runQCReview } from "../lib/qcEngine";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef(null);
   const [reviewingId, setReviewingId] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: tickets = [], isLoading: loadingTickets } = useQuery({
     queryKey: ["tickets"],
@@ -27,6 +30,40 @@ export default function Dashboard() {
     queryFn: () => base44.entities.QCGuideline.list(),
   });
 
+  // --- CSV UPLOAD LOGIC ---
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          // We loop through each row of the CSV and create a ticket
+          for (const row of results.data) {
+            await base44.entities.Ticket.create({
+              customer_name: row.customer_name || "Unknown",
+              subject: row.subject || "No Subject",
+              content: row.content || row.message || "", // matches common CSV headers
+              qc_status: "pending",
+              created_date: new Date().toISOString()
+            });
+          }
+          toast.success(`Successfully uploaded ${results.data.length} tickets`);
+          queryClient.invalidateQueries({ queryKey: ["tickets"] });
+        } catch (error) {
+          toast.error("Failed to upload tickets: " + error.message);
+        } finally {
+          setIsUploading(false);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+      }
+    });
+  };
+
+  // --- QC REVIEW LOGIC ---
   const runAllPendingMutation = useMutation({
     mutationFn: async () => {
       const pending = tickets.filter(t => t.qc_status === "pending");
@@ -72,22 +109,44 @@ export default function Dashboard() {
         title="QC Dashboard"
         description="Monitor quality control of customer service interactions"
       >
-        {pendingCount > 0 && (
-          <Button
-            onClick={() => runAllPendingMutation.mutate()}
-            disabled={runAllPendingMutation.isPending || guidelines.length === 0}
+        <div className="flex gap-3">
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            accept=".csv"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+          />
+          
+          <Button 
+            variant="outline" 
             className="gap-2"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
           >
-            {runAllPendingMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Zap className="w-4 h-4" />
-            )}
-            Review {pendingCount} Pending
+            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            Upload CSV
           </Button>
-        )}
+
+          {pendingCount > 0 && (
+            <Button
+              onClick={() => runAllPendingMutation.mutate()}
+              disabled={runAllPendingMutation.isPending || guidelines.length === 0}
+              className="gap-2"
+            >
+              {runAllPendingMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4" />
+              )}
+              Review {pendingCount} Pending
+            </Button>
+          )}
+        </div>
       </PageHeader>
 
+      {/* ... (rest of your existing UI remains the same) */}
       {loadingTickets ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -117,19 +176,6 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <ScoreChart tickets={tickets} />
-                <div className="flex flex-wrap gap-3 justify-center mt-4">
-                  {[
-                    { label: "Passed", color: "bg-green-400" },
-                    { label: "Failed", color: "bg-rose-400" },
-                    { label: "Warning", color: "bg-amber-400" },
-                    { label: "Pending", color: "bg-stone-300" },
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center gap-1.5 text-[10px] tracking-widest uppercase text-muted-foreground">
-                      <div className={`w-1.5 h-1.5 rounded-full ${item.color}`} />
-                      {item.label}
-                    </div>
-                  ))}
-                </div>
               </CardContent>
             </Card>
           </div>
