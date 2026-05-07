@@ -6,6 +6,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.4",
+    "openai": "^6.36.0",
     "papaparse": "^5.5.3"
   }
 }
